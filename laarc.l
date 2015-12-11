@@ -42,44 +42,84 @@
                     (at lst (+ i 1))))))))
 )
 
+(define-macro def? (x)
+  (target
+    lua: `(is? ,x)
+    js:  `(not (= (typeof ,x) "undefined"))))
+
+(during-compile-and-run
+  (define-global %kv '(%kv))
+  (define-global %nil '(%nil))
+
+  (define-symbol lumen-eq     (do =))
+  (define-symbol lumen-assign (do set))
+  (define-symbol lumen-len    (do #))
+  (define-symbol lumen-str    (do str))
+  (define-symbol lumen-cat    (do cat)))
+
 (define-macro arc-toplevel? ()
   `(two? environment))
 
+
+(define-macro each (x t rest: body)
+  (let-unique (o n i c)
+    (let ((k v) (if (atom? x) (list i x)
+                  (if (> (# x) 1) x
+                      (list i (hd x)))))
+      `(let (,o ,t ,c 0 ,k nil)
+         (%for ,o ,k
+           (if (> ,c 0)
+             (dec ,c)
+             (let (,v (get ,o ,k))
+               (target js: (if (numeric? ,k) (set ,k (parseInt ,k))))
+               (when (lumen-eq ,v %kv)
+                 (set ,c 2)
+                 (set ,v (get ,o (+ ,k 2)))
+                 (set ,k (get ,o (+ ,k 1))))
+               (when (lumen-eq ,v %nil)
+                 (set ,v nil))
+               ,@body)))))))
+
+(define-macro for (i to rest: body)
+  `(let ,i 0
+     (while (< ,i ,to)
+       ,@body
+       (inc ,i))))
+
+(define-macro step (v t rest: body)
+  (let-unique (x n i c u)
+    `(let (,x ,t ,n (# ,x) ,c 0)
+       (for ,i ,n
+         (when (>= ,i ,c)
+           (let (,u (at ,x ,i))
+             (when (lumen-eq ,u %nil)
+               (set ,u nil))
+             (if (lumen-eq ,u %kv) (set ,c (+ ,i 3))
+               (let (,v ,u)
+                 (do ,@body)))))))))
+
+(define-macro list body
+  (let-unique (x)
+    (let (l () forms ())
+      (each (k v) body
+        (when (nil? v)
+          (set v `',%nil)) ; todo
+        (if (number? k)
+            (set (get l k) v)
+          (add forms `(set (get ,x ',k) ,v))))
+      (if (some? forms)
+          `(let ,x (%array ,@l) ,@forms ,x)
+        `(%array ,@l)))))
+
 (during-compile-and-run
-
-  (define-global do-list (f xs)
-    (when (and (is? xs) (some? xs))
-      (for i (# xs)
-        (let x (at xs i)
-          (unless (= x '%list)
-            (if (= x '%kv)
-                (let (k (at xs (+ i 1))
-                      v (at xs (+ i 2)))
-                  (inc i 2)
-                  (f k v))
-                (= x ".")
-                (let (k 'rest
-                      v (at xs (+ i 1)))
-                  (inc i 1)
-                  (f k v))
-              (f x)))))))
-
-  (define-macro step-list (x ys rest: body)
-    `(do-list (fn ,x ,@body) ,ys))
-
-  (define-global parse-list (xs)
-    (if (atom? xs) xs
-      (with l () 
-        (step-list (k v) xs
-          (let k (parse-list k)
-            (if (is? v)
-              (set (get l k) (parse-list v))
-              (add l k)))))))
 
   (define-global parse-args (xs inits)
     (if (atom? xs) xs
       (with l ()
-        (step-list (k v) xs
+        (each (k v) xs
+          (when (number? k)
+            (set k v)
+            (set v nil))
           (if (nil? v)
                (add l (parse-args k inits))
               (= k 'rest)
@@ -89,9 +129,6 @@
                    (add l (parse-args k inits)))
               (error "todo"))))))
 )
-
-(define-macro %list l
-  (parse-list l))
 
 ;; Arc.
 
@@ -121,15 +158,9 @@
 
 (sym t true)
 
-(sym lumen-eq     (do =))
-(sym lumen-assign (do set))
-(sym lumen-len    (do #))
-(sym lumen-str    (do str))
-(sym lumen-cat    (do cat))
-
 (mac is l
   (case (lumen-len l)
-    0 `t
+    0 `true
     1 `(is? ,@l)
     2 `(lumen-eq ,@l)
     `(and ,@(map3 (fn (x y) `(is ,x ,y))

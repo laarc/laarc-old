@@ -97,7 +97,11 @@ local function wrap(s, x)
   end
 end
 function on_atom(x)
-  return(x)
+  if x == nil or x == "nil" then
+    return(_37nil)
+  else
+    return(x)
+  end
 end
 read_table[""] = function (s)
   local str = ""
@@ -161,7 +165,7 @@ read_table[""] = function (s)
   return(on_atom(_e1))
 end
 function on_list(xs)
-  return(join({"%list"}, xs))
+  return(xs)
 end
 read_table["("] = function (s)
   read_char(s)
@@ -181,16 +185,16 @@ read_table["("] = function (s)
         if key63(x) then
           local k = clip(x, 0, edge(x))
           local v = read(s)
-          add(l, "%kv")
+          add(l, _37kv)
           add(l, k)
           add(l, v)
         else
           if flag63(x) then
             local _k = clip(x, 1)
             local v = true
-            add(l, "%kv")
+            add(l, _37kv)
             add(l, _k)
-            add(l, v)
+            add(l, _37nil)
           else
             add(l, x)
           end

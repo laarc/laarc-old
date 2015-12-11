@@ -69,7 +69,9 @@
       (list x y))))
 
 (define-global on-atom (x)
-  x)
+  (if (or (= x nil) (= x 'nil))
+    %nil
+    x))
 
 (define-reader ("" s) ; atom
   (let (str "")
@@ -91,7 +93,7 @@
           (if (or (nil? n) (nan? n) (inf? n)) str n))))))
 
 (define-global on-list (xs)
-  `(%list ,@xs))
+  xs)
 
 (define-reader ("(" s)
   (read-char s)
@@ -106,15 +108,15 @@
               (if (key? x)
                   (let (k (clip x 0 (edge x))
                         v (read s))
-                    (add l '%kv)
+                    (add l %kv)
                     (add l k)
                     (add l v))
                   (flag? x) 
                   (let (k (clip x 1)
                         v true)
-                    (add l '%kv)
+                    (add l %kv)
                     (add l k)
-                    (add l v))
+                    (add l %nil))
                 (add l x)))))))))
 
 (define-reader (")" s)

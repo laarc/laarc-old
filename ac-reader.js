@@ -97,7 +97,11 @@ var wrap = function (s, x) {
   }
 };
 on_atom = function (x) {
-  return(x);
+  if (x === undefined || x === "nil") {
+    return(_37nil);
+  } else {
+    return(x);
+  }
 };
 read_table[""] = function (s) {
   var str = "";
@@ -161,7 +165,7 @@ read_table[""] = function (s) {
   return(on_atom(_e1));
 };
 on_list = function (xs) {
-  return(join(["%list"], xs));
+  return(xs);
 };
 read_table["("] = function (s) {
   read_char(s);
@@ -181,16 +185,16 @@ read_table["("] = function (s) {
         if (key63(x)) {
           var k = clip(x, 0, edge(x));
           var v = read(s);
-          add(l, "%kv");
+          add(l, _37kv);
           add(l, k);
           add(l, v);
         } else {
           if (flag63(x)) {
             var _k = clip(x, 1);
             var v = true;
-            add(l, "%kv");
+            add(l, _37kv);
             add(l, _k);
-            add(l, v);
+            add(l, _37nil);
           } else {
             add(l, x);
           }
