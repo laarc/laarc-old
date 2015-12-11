@@ -13,6 +13,8 @@ cd "${dir}"
 export laarc_home="$home"
 
 if [ -z "$LUMEN_HOST" ]; then export LUMEN_HOST="${HOST}"; fi
+export LUA_PATH="${LUA_PATH};./?.lua"
+export NODE_PATH="${NODE_PATH}:."
 
 "${home}/lumen/bin/lumen" -e "(do (define home ((get (require 'system) 'get-environment-variable) 'laarc_home)) (load (cat home '/laarc.l)) (ac-load (cat home '/test.la)) (test))"
 exec "${home}/lumen/bin/lumen" 
