@@ -10,10 +10,11 @@ cd "$(dirname "$at")"
 home="$(pwd)"
 cd "${dir}"
 
-export laarc="${home}/laarc.l"
+export laarc_home="$home"
 
 if [ -z "$LUMEN_HOST" ]; then export LUMEN_HOST="${HOST}"; fi
 
-exec "${home}/lumen/bin/lumen" -e "(do (load ((get (require 'system) 'get-environment-variable) 'laarc)) (test))"
+"${home}/lumen/bin/lumen" -e "(do (define home ((get (require 'system) 'get-environment-variable) 'laarc_home)) (load (cat home '/laarc.l)) (ac-load (cat home '/test.la)) (test))"
+exec "${home}/lumen/bin/lumen" 
 
 

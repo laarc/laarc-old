@@ -1,0 +1,43 @@
+
+(def foo (x y: (+ x 42) z: 0 :sep: " " . body)
+  (let (s "" c nil)
+    (step x body
+      (if (is? c) (cat! s c))
+      (set c sep)
+      (cat! s (str x)))
+    (print s))
+  (print (str body))
+  (+ x y z))
+
+; possible to get this syntax without perf penalty?
+;  (foo z: 99 1 2)
+
+
+(def test-check (s x y)
+  (unless (lumen-eq (lumen-str x) (lumen-str y))
+    (print (cat s ": Expected " (lumen-str x) ", got " (lumen-str y)))))
+
+
+(mac testing l
+  (with e '(do)
+    (step (expect expr) (pair l)
+      (add e `(prdo ,expr))
+      (add e `(test-check (lumen-str ',expr) ,expect (eval '(do ,expr)))))))
+
+
+(def test ()
+  (testing 
+        t (is)
+        t (is 1)
+        t (is 1 1)
+    false (is 1 2)
+        t (is 1 1 1)
+    false (is 1 1 2)
+       42 (= x 42)
+        t (is x 42)
+        7 (= x 99
+             y 7)
+        t (is x 99)
+        t (is y 7)))
+
+
