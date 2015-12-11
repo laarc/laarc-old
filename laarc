@@ -1,0 +1,19 @@
+#!/bin/sh
+
+# resolve symlinks.
+if [ -z "$at" ]; then at="`readlink -f "$0" 2>/dev/null`"; fi
+if [ -z "$at" ]; then at="`readlink    "$0" 2>/dev/null`"; fi
+if [ -z "$at" ]; then at="$0"; fi
+
+dir="$(pwd)"
+cd "$(dirname "$at")"
+home="$(pwd)"
+cd "${dir}"
+
+export laarc="${home}/laarc.l"
+
+if [ -z "$LUMEN_HOST" ]; then export LUMEN_HOST="${HOST}"; fi
+
+exec "${home}/lumen/bin/lumen" -e "(do (load ((get (require 'system) 'get-environment-variable) 'laarc)) (test))"
+
+
