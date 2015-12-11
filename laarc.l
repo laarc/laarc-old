@@ -50,6 +50,8 @@
 (during-compile-and-run
   (define-global %kv '(%kv))
   (define-global %nil '(%nil))
+  (define-macro %nil ()
+    `(do %nil))
 
   (define-symbol lumen-eq     (do =))
   (define-symbol lumen-assign (do set))
@@ -103,7 +105,8 @@
     (let (l () forms ())
       (each (k v) body
         (when (nil? v)
-          (set v `',%nil)) ; todo
+          ; (set v `',%nil)) ; todo
+          (set v %nil))
         (if (number? k)
             (set (get l k) v)
           (add forms `(set (get ,x ',k) ,v))))
