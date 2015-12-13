@@ -1,0 +1,41 @@
+#!/bin/sh
+
+dir="$(pwd)"
+cd "$(dirname "$0")"
+home="$(pwd)"
+cd "${dir}"
+
+if [ ! -z "${LUMEN_HOST}" ]
+then
+    host="${LUMEN_HOST}"
+elif luajit -v > /dev/null 2>&1
+then
+    host=luajit
+elif lua -v > /dev/null 2>&1
+then
+    host=lua
+elif node -v > /dev/null 2>&1
+then
+    host=node
+else
+    echo no host found
+fi
+
+os=$(uname | sed "y/ABCDEFGHIJKLMNOPQRSTUVWXYZ/abcdefghijklmnopqrstuvwxyz/")
+case $host in
+    node*)
+        code=lumen.js
+        export NODE_PATH="$NODE_PATH:${home}:${dir}/lib";;
+    *)
+        code=lumen.lua
+        export LUA_PATH="$LUA_PATH;${home}/?.lua;${dir}/lib/?.lua;;";;
+esac
+
+export LUMEN_HOST="${host}"
+
+if [ -z "$*" ]; then
+  exec rlwrap ${host} "${home}/${code}" "$@"
+else
+  exec        ${host} "${home}/${code}" "$@"
+fi
+
