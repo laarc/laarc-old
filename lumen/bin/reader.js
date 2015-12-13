@@ -1,21 +1,27 @@
-var delimiters = {"\n": true, "(": true, ")": true, ";": true};
-var whitespace = {" ": true, "\t": true, "\n": true};
+var delimiters = {"(": true, ")": true, ";": true, "\n": true, "}": true, "]": true, "{": true, "[": true};
+var whitespace = {" ": true, "\n": true, "\t": true};
 var stream = function (str, more) {
-  return({len: _35(str), string: str, more: more, pos: 0});
+  return({more: more, pos: 0, len: _35(str), string: str});
 };
-var peek_char = function (s) {
+var peek_char = function (s, count, offset) {
   var _id = s;
-  var string = _id.string;
-  var len = _id.len;
   var pos = _id.pos;
-  if (pos < len) {
-    return(char(string, pos));
+  var len = _id.len;
+  var string = _id.string;
+  var from = pos + (offset || 0);
+  var n = count || 1;
+  if (from <= len - n) {
+    if (n === 1) {
+      return(char(string, from));
+    } else {
+      return(clip(string, from, from + n));
+    }
   }
 };
-var read_char = function (s) {
-  var c = peek_char(s);
+var read_char = function (s, count, offset) {
+  var c = peek_char(s, count, offset);
   if (c) {
-    s.pos = s.pos + 1;
+    s.pos = s.pos + _35(c);
     return(c);
   }
 };
@@ -175,7 +181,84 @@ read_table["("] = function (s) {
 read_table[")"] = function (s) {
   throw new Error("Unexpected ) at " + s.pos);
 };
+read_table["["] = function (s) {
+  read_char(s);
+  var r = undefined;
+  var l = [];
+  while (nil63(r)) {
+    skip_non_code(s);
+    var c = peek_char(s);
+    if (c === "]") {
+      read_char(s);
+      r = ["fn", ["_"], l];
+    } else {
+      if (nil63(c)) {
+        r = expected(s, "]");
+      } else {
+        var x = read(s);
+        add(l, x);
+      }
+    }
+  }
+  return(r);
+};
+read_table["]"] = function (s) {
+  throw new Error("Unexpected ] at " + s.pos);
+};
+read_table["{"] = function (s) {
+  read_char(s);
+  var r = undefined;
+  var l = [];
+  while (nil63(r)) {
+    skip_non_code(s);
+    var c = peek_char(s);
+    if (c === "}") {
+      read_char(s);
+      r = join(["curly"], l);
+    } else {
+      if (nil63(c)) {
+        r = expected(s, "}");
+      } else {
+        var x = read(s);
+        add(l, x);
+      }
+    }
+  }
+  return(r);
+};
+read_table["}"] = function (s) {
+  throw new Error("Unexpected } at " + s.pos);
+};
+read_table["\"\"\""] = function (s) {
+  read_char(s, 3);
+  var r = undefined;
+  var str = "\"";
+  while (nil63(r)) {
+    var c = peek_char(s, 3);
+    if (c === "\"\"\"") {
+      read_char(s, 3);
+      r = str + "\"";
+    } else {
+      if (nil63(c)) {
+        r = expected(s, "\"\"\"");
+      } else {
+        var x = read_char(s);
+        var _e1;
+        if (x === "\"" || x === "\\") {
+          _e1 = "\\" + x;
+        } else {
+          _e1 = x;
+        }
+        str = str + _e1;
+      }
+    }
+  }
+  return(r);
+};
 read_table["\""] = function (s) {
+  if (peek_char(s, 3) === "\"\"\"") {
+    return(read_table["\"\"\""](s));
+  }
   read_char(s);
   var r = undefined;
   var str = "\"";
@@ -196,7 +279,36 @@ read_table["\""] = function (s) {
   }
   return(r);
 };
+read_table["||"] = function (s) {
+  read_char(s, 2);
+  var r = undefined;
+  var str = "\"";
+  while (nil63(r)) {
+    var c = peek_char(s, 2);
+    if (c === "||") {
+      read_char(s, 2);
+      r = str + "\"";
+    } else {
+      if (nil63(c)) {
+        r = expected(s, "||");
+      } else {
+        var x = read_char(s);
+        var _e2;
+        if (x === "\"" || x === "\\") {
+          _e2 = "\\" + x;
+        } else {
+          _e2 = x;
+        }
+        str = str + _e2;
+      }
+    }
+  }
+  return(r);
+};
 read_table["|"] = function (s) {
+  if (peek_char(s, 2) === "||") {
+    return(read_table["||"](s));
+  }
   read_char(s);
   var r = undefined;
   var str = "|";

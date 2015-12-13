@@ -36,8 +36,11 @@ end
 function function63(x)
   return(type(x) == "function")
 end
+function obj63(x)
+  return(is63(x) and type(x) == "table")
+end
 function atom63(x)
-  return(nil63(x) or string63(x) or number63(x) or boolean63(x))
+  return(nil63(x) or string63(x) or number63(x) or boolean63(x) or function63(x))
 end
 nan = 0 / 0
 inf = 1 / 0
@@ -223,22 +226,53 @@ function pair(l)
   end
   return(l1)
 end
+function tuple(lst, n)
+  if nil63(n) then
+    n = 2
+  end
+  local l1 = {}
+  local i = 0
+  while i < _35(lst) do
+    local l2 = {}
+    local j = 0
+    while j < n do
+      add(l2, lst[i + j + 1])
+      j = j + 1
+    end
+    add(l1, l2)
+    i = i + (n - 1)
+    i = i + 1
+  end
+  return(l1)
+end
+function vals(lst)
+  local r = {}
+  local _x4 = lst
+  local _n6 = _35(_x4)
+  local _i6 = 0
+  while _i6 < _n6 do
+    local x = _x4[_i6 + 1]
+    add(r, x)
+    _i6 = _i6 + 1
+  end
+  return(r)
+end
 function sort(l, f)
   table.sort(l, f)
   return(l)
 end
 function map(f, x)
   local t = {}
-  local _x4 = x
-  local _n6 = _35(_x4)
-  local _i6 = 0
-  while _i6 < _n6 do
-    local v = _x4[_i6 + 1]
+  local _x5 = x
+  local _n7 = _35(_x5)
+  local _i7 = 0
+  while _i7 < _n7 do
+    local v = _x5[_i7 + 1]
     local y = f(v)
     if is63(y) then
       add(t, y)
     end
-    _i6 = _i6 + 1
+    _i7 = _i7 + 1
   end
   local _o5 = x
   local k = nil
@@ -273,9 +307,9 @@ function keys63(t)
 end
 function empty63(t)
   local _o7 = t
-  local _i9 = nil
-  for _i9 in next, _o7 do
-    local x = _o7[_i9]
+  local _i10 = nil
+  for _i10 in next, _o7 do
+    local x = _o7[_i10]
     return(false)
   end
   return(true)
@@ -446,58 +480,62 @@ function escape(s)
   end
   return(s1 .. "\"")
 end
-function str(x, depth)
-  if depth and depth > 40 then
-    return("circular")
+function str(x, depth, ancestors)
+  if nil63(x) then
+    return("nil")
   else
-    if nil63(x) then
-      return("nil")
+    if nan63(x) then
+      return("nan")
     else
-      if nan63(x) then
-        return("nan")
+      if x == inf then
+        return("inf")
       else
-        if x == inf then
-          return("inf")
+        if x == -inf then
+          return("-inf")
         else
-          if x == -inf then
-            return("-inf")
-          else
-            if boolean63(x) then
-              if x then
-                return("true")
-              else
-                return("false")
-              end
+          if boolean63(x) then
+            if x then
+              return("true")
             else
-              if string63(x) then
-                return(escape(x))
+              return("false")
+            end
+          else
+            if string63(x) then
+              return(escape(x))
+            else
+              if atom63(x) then
+                return(tostring(x))
               else
-                if atom63(x) then
-                  return(tostring(x))
+                if function63(x) then
+                  return("fn")
                 else
-                  if function63(x) then
-                    return("function")
+                  if not obj63(x) then
+                    return("|" .. type(x) .. "|")
                   else
                     local s = "("
                     local sp = ""
                     local xs = {}
                     local ks = {}
                     local d = (depth or 0) + 1
+                    local ans = join({x}, ancestors or {})
+                    if in63(x, ancestors or {}) then
+                      return("circular")
+                    end
                     local _o10 = x
                     local k = nil
                     for k in next, _o10 do
                       local v = _o10[k]
                       if number63(k) then
-                        xs[k] = str(v, d)
+                        xs[k] = str(v, d, ans)
                       else
                         add(ks, k .. ":")
-                        add(ks, str(v, d))
+                        add(ks, str(v, d, ans))
                       end
                     end
                     local _o11 = join(xs, ks)
-                    local _i13 = nil
-                    for _i13 in next, _o11 do
-                      local v = _o11[_i13]
+                    local _i14 = nil
+                    for _i14 in next, _o11 do
+                      local v = _o11[_i14]
                       s = s .. sp .. v
                       sp = " "
                     end
@@ -524,8 +562,8 @@ function toplevel63()
   return(one63(environment))
 end
 function setenv(k, ...)
-  local _r65 = unstash({...})
-  local _id1 = _r65
+  local _r68 = unstash({...})
+  local _id1 = _r68
   local _keys = cut(_id1, 0)
   if string63(k) then
     local _e7
@@ -741,7 +779,7 @@ setenv("define-global", {_stash = true, macro = function (name, x, ...)
   local _r35 = unstash({...})
   local _id29 = _r35
   local body = cut(_id29, 0)
-  setenv(name, {_stash = true, variable = true, toplevel = true})
+  setenv(name, {_stash = true, toplevel = true, variable = true})
   if some63(body) then
     return(join({"%global-function", name}, bind42(x, body)))
   else

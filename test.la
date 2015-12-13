@@ -1,12 +1,12 @@
 
-(def foo (x y: (+ x 42) z: 0 :sep: " " . body)
+(def foo (x y: (+ x 42) z: 0 . l sep: " ")
   (let (s "" c nil)
-    (step x body
+    (step x l
       (if (is? c) (cat! s c))
       (set c sep)
       (cat! s (str x)))
     (print s))
-  (print (str body))
+  (print (str l))
   (+ x y z))
 
 ; possible to get this syntax without perf penalty?

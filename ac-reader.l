@@ -88,6 +88,7 @@
           (= str "-nan") nan
           (= str "inf") inf
           (= str "-inf") -inf
+          (= str ".") ":rest"
           (not (number-code? (code str (edge str)))) str
         (let n (number str)
           (if (or (nil? n) (nan? n) (inf? n)) str n))))))
@@ -116,7 +117,7 @@
                         v true)
                     (add l %kv)
                     (add l k)
-                    (add l %nil))
+                    (add l true))
                 (add l x)))))))))
 
 (define-reader (")" s)

@@ -39,8 +39,11 @@ boolean63 = function (x) {
 function63 = function (x) {
   return(type(x) === "function");
 };
+obj63 = function (x) {
+  return(is63(x) && type(x) === "object");
+};
 atom63 = function (x) {
-  return(nil63(x) || string63(x) || number63(x) || boolean63(x));
+  return(nil63(x) || string63(x) || number63(x) || boolean63(x) || function63(x));
 };
 nan = 0 / 0;
 inf = 1 / 0;
@@ -258,6 +261,37 @@ pair = function (l) {
   }
   return(l1);
 };
+tuple = function (lst, n) {
+  if (nil63(n)) {
+    n = 2;
+  }
+  var l1 = [];
+  var i = 0;
+  while (i < _35(lst)) {
+    var l2 = [];
+    var j = 0;
+    while (j < n) {
+      add(l2, lst[i + j]);
+      j = j + 1;
+    }
+    add(l1, l2);
+    i = i + (n - 1);
+    i = i + 1;
+  }
+  return(l1);
+};
+vals = function (lst) {
+  var r = [];
+  var _x3 = lst;
+  var _n6 = _35(_x3);
+  var _i6 = 0;
+  while (_i6 < _n6) {
+    var x = _x3[_i6];
+    add(r, x);
+    _i6 = _i6 + 1;
+  }
+  return(r);
+};
 sort = function (l, f) {
   var _e7;
   if (f) {
@@ -273,16 +307,16 @@ sort = function (l, f) {
 };
 map = function (f, x) {
   var t = [];
-  var _x3 = x;
-  var _n6 = _35(_x3);
-  var _i6 = 0;
-  while (_i6 < _n6) {
-    var v = _x3[_i6];
+  var _x4 = x;
+  var _n7 = _35(_x4);
+  var _i7 = 0;
+  while (_i7 < _n7) {
+    var v = _x4[_i7];
     var y = f(v);
     if (is63(y)) {
       add(t, y);
     }
-    _i6 = _i6 + 1;
+    _i7 = _i7 + 1;
   }
   var _o5 = x;
   var k = undefined;
@@ -331,16 +365,16 @@ keys63 = function (t) {
 };
 empty63 = function (t) {
   var _o7 = t;
-  var _i9 = undefined;
-  for (_i9 in _o7) {
-    var x = _o7[_i9];
+  var _i10 = undefined;
+  for (_i10 in _o7) {
+    var x = _o7[_i10];
     var _e10;
-    if (numeric63(_i9)) {
-      _e10 = parseInt(_i9);
+    if (numeric63(_i10)) {
+      _e10 = parseInt(_i10);
     } else {
-      _e10 = _i9;
+      _e10 = _i10;
     }
-    var __i9 = _e10;
+    var __i10 = _e10;
     return(false);
   }
   return(true);
@@ -528,43 +562,47 @@ escape = function (s) {
   }
   return(s1 + "\"");
 };
-str = function (x, depth) {
-  if (depth && depth > 40) {
-    return("circular");
+str = function (x, depth, ancestors) {
+  if (nil63(x)) {
+    return("nil");
   } else {
-    if (nil63(x)) {
-      return("nil");
+    if (nan63(x)) {
+      return("nan");
     } else {
-      if (nan63(x)) {
-        return("nan");
+      if (x === inf) {
+        return("inf");
       } else {
-        if (x === inf) {
-          return("inf");
+        if (x === -inf) {
+          return("-inf");
         } else {
-          if (x === -inf) {
-            return("-inf");
-          } else {
-            if (boolean63(x)) {
-              if (x) {
-                return("true");
-              } else {
-                return("false");
-              }
+          if (boolean63(x)) {
+            if (x) {
+              return("true");
             } else {
-              if (string63(x)) {
-                return(escape(x));
+              return("false");
+            }
+          } else {
+            if (string63(x)) {
+              return(escape(x));
+            } else {
+              if (atom63(x)) {
+                return(tostring(x));
               } else {
-                if (atom63(x)) {
-                  return(tostring(x));
+                if (function63(x)) {
+                  return("fn");
                 } else {
-                  if (function63(x)) {
-                    return("function");
+                  if (! obj63(x)) {
+                    return("|" + type(x) + "|");
                   } else {
                     var s = "(";
                     var sp = "";
                     var xs = [];
                     var ks = [];
                     var d = (depth || 0) + 1;
+                    var ans = join([x], ancestors || []);
+                    if (in63(x, ancestors || [])) {
+                      return("circular");
+                    }
                     var _o10 = x;
                     var k = undefined;
                     for (k in _o10) {
@@ -577,23 +615,23 @@ str = function (x, depth) {
                       }
                       var _k8 = _e16;
                       if (number63(_k8)) {
-                        xs[_k8] = str(v, d);
+                        xs[_k8] = str(v, d, ans);
                       } else {
                         add(ks, _k8 + ":");
-                        add(ks, str(v, d));
+                        add(ks, str(v, d, ans));
                       }
                     }
                     var _o11 = join(xs, ks);
-                    var _i13 = undefined;
-                    for (_i13 in _o11) {
-                      var v = _o11[_i13];
+                    var _i14 = undefined;
+                    for (_i14 in _o11) {
+                      var v = _o11[_i14];
                       var _e17;
-                      if (numeric63(_i13)) {
-                        _e17 = parseInt(_i13);
+                      if (numeric63(_i14)) {
+                        _e17 = parseInt(_i14);
                       } else {
-                        _e17 = _i13;
+                        _e17 = _i14;
                       }
-                      var __i13 = _e17;
+                      var __i14 = _e17;
                       s = s + sp + v;
                       sp = " ";
                     }
@@ -619,8 +657,8 @@ toplevel63 = function () {
   return(one63(environment));
 };
 setenv = function (k) {
-  var _r68 = unstash(Array.prototype.slice.call(arguments, 1));
-  var _id1 = _r68;
+  var _r71 = unstash(Array.prototype.slice.call(arguments, 1));
+  var _id1 = _r71;
   var _keys = cut(_id1, 0);
   if (string63(k)) {
     var _e18;
@@ -853,7 +891,7 @@ setenv("define-global", {_stash: true, macro: function (name, x) {
   var _r35 = unstash(Array.prototype.slice.call(arguments, 2));
   var _id29 = _r35;
   var body = cut(_id29, 0);
-  setenv(name, {_stash: true, variable: true, toplevel: true});
+  setenv(name, {_stash: true, toplevel: true, variable: true});
   if (some63(body)) {
     return(join(["%global-function", name], bind42(x, body)));
   } else {

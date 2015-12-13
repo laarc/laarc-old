@@ -51,7 +51,7 @@
   (define-global %kv '(%kv))
   (define-global %nil '(%nil))
   (define-macro %nil ()
-    `(do %nil))
+    `(do nil))
 
   (define-symbol lumen-eq     (do =))
   (define-symbol lumen-assign (do set))
@@ -119,18 +119,24 @@
   (define-global parse-args (xs inits)
     (if (atom? xs) xs
       (with l ()
-        (each (k v) xs
-          (when (number? k)
-            (set k v)
-            (set v nil))
-          (if (nil? v)
-               (add l (parse-args k inits))
-              (= k 'rest)
-               (set (get l 'rest) (parse-args v inits))
-              (atom? k)
-               (do (add inits `(if (nil? ,k) (set ,k ,v)))
-                   (add l (parse-args k inits)))
-              (error "todo"))))))
+        (let rest? nil
+          (each (k v) xs
+            (when (number? k)
+              (set k v)
+              (set v nil))
+            (if (nil? v)
+                  (if (= rest? true)
+                    (do (set (get l 'rest) (parse-args k inits))
+                        (set rest? k))
+                    (add l (parse-args k inits)))
+                (= k 'rest)
+                  (do (set (get l 'rest) true)
+                      (set rest? true))
+                (atom? k)
+                 (do (add inits `(if (nil? ,k) (set ,k ,v)))
+                     (if rest? (set (get l k) true)
+                       (add l k)))
+                (error "todo")))))))
 )
 
 ;; Arc.

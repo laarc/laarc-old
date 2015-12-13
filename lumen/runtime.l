@@ -27,8 +27,11 @@
 (define-global boolean? (x) (= (type x) 'boolean))
 (define-global function? (x) (= (type x) 'function))
 
+(define-global obj? (x)
+  (and (is? x) (= (type x) (target js: 'object lua: 'table))))
+
 (define-global atom? (x)
-  (or (nil? x) (string? x) (number? x) (boolean? x)))
+  (or (nil? x) (string? x) (number? x) (boolean? x) (function? x)))
 
 (define-global nan (/ 0 0))
 (define-global inf (/ 1 0))
@@ -144,6 +147,21 @@
     (for i (# l)
       (add l1 (list (at l i) (at l (+ i 1))))
       (inc i))))
+
+(define-global tuple (lst n)
+  (if (nil? n) (set n 2))
+  (with l1 ()
+    (for i (# lst)
+      (let l2 ()
+        (for j n
+          (add l2 (at lst (+ i j))))
+        (add l1 l2))
+      (inc i (- n 1)))))
+
+(define-global vals (lst)
+  (with r ()
+    (step x lst
+      (add r x))))
 
 (define-global sort (l f)
   (target
@@ -270,24 +288,27 @@
         (cat! s1 c1)))
     (cat s1 "\"")))
 
-(define-global str (x depth)
-  (if (and depth (> depth 40)) "circular"
-      (nil? x) "nil"
+(define-global str (x depth ancestors)
+  (if (nil? x) "nil"
       (nan? x) "nan"
       (= x inf) "inf"
       (= x -inf) "-inf"
       (boolean? x) (if x "true" "false")
       (string? x) (escape x)
       (atom? x) (tostring x)
-      (function? x) "function"
+      (function? x) "fn"
+      (not (obj? x)) (cat "|" (type x) "|")
     (let (s "(" sp ""
           xs () ks ()
-          d (+ (or depth 0) 1))
+          d (+ (or depth 0) 1)
+          ans (join (list x) (or ancestors ())))
+      (when (in? x (or ancestors ()))
+        (return "circular"))
       (each (k v) x
         (if (number? k)
-            (set (get xs k) (str v d))
+            (set (get xs k) (str v d ans))
           (do (add ks (cat k ":"))
-              (add ks (str v d)))))
+              (add ks (str v d ans)))))
       (each v (join xs ks)
         (cat! s sp v)
         (set sp " "))

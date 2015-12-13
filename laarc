@@ -12,7 +12,16 @@ cd "${dir}"
 
 export laarc_home="$home"
 
-if [ -z "$LUMEN_HOST" ]; then export LUMEN_HOST="${HOST}"; fi
+if [ -z "$HOST" ]; then HOST="${host}"; fi
+if [ -z "$LUMEN_HOST" ]; then LUMEN_HOST="${HOST}"; fi
+
+case "$LUMEN_HOST" in
+    luvit)
+        LUMEN_HOST="${home}/luvit/luvit"
+esac
+export LUMEN_HOST
+
+
 export LUA_PATH="${LUA_PATH};./?.lua"
 export NODE_PATH="${NODE_PATH}:."
 

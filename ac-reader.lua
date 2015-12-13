@@ -138,15 +138,21 @@ read_table[""] = function (s)
               _e6 = -inf
             else
               local _e7
-              if not number_code63(code(str, edge(str))) then
-                _e7 = str
+              if str == "." then
+                _e7 = ":rest"
               else
-                local n = number(str)
                 local _e8
-                if nil63(n) or nan63(n) or inf63(n) then
+                if not number_code63(code(str, edge(str))) then
                   _e8 = str
                 else
-                  _e8 = n
+                  local n = number(str)
+                  local _e9
+                  if nil63(n) or nan63(n) or inf63(n) then
+                    _e9 = str
+                  else
+                    _e9 = n
+                  end
+                  _e8 = _e9
                 end
                 _e7 = _e8
               end
@@ -194,7 +200,7 @@ read_table["("] = function (s)
             local v = true
             add(l, _37kv)
             add(l, _k)
-            add(l, _37nil)
+            add(l, true)
           else
             add(l, x)
           end

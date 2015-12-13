@@ -138,15 +138,21 @@ read_table[""] = function (s) {
               _e6 = -inf;
             } else {
               var _e7;
-              if (! number_code63(code(str, edge(str)))) {
-                _e7 = str;
+              if (str === ".") {
+                _e7 = ":rest";
               } else {
-                var n = number(str);
                 var _e8;
-                if (nil63(n) || nan63(n) || inf63(n)) {
+                if (! number_code63(code(str, edge(str)))) {
                   _e8 = str;
                 } else {
-                  _e8 = n;
+                  var n = number(str);
+                  var _e9;
+                  if (nil63(n) || nan63(n) || inf63(n)) {
+                    _e9 = str;
+                  } else {
+                    _e9 = n;
+                  }
+                  _e8 = _e9;
                 }
                 _e7 = _e8;
               }
@@ -194,7 +200,7 @@ read_table["("] = function (s) {
             var v = true;
             add(l, _37kv);
             add(l, _k);
-            add(l, _37nil);
+            add(l, true);
           } else {
             add(l, x);
           }
