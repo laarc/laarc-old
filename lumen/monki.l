@@ -18,7 +18,8 @@
 (target lua:
   (let ((ok req) (guard (require 'require)))
     (when ok
-      (set require (req "."))
+      (define-global require (req "/"))
+      (eval '(define-global require ((require 'require) "/")))
       (define-global pretty-print (get (require 'pretty-print) 'prettyPrint))
       ((get compiler 'run) """
 ffi = require('ffi')
