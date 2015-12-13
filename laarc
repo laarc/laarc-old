@@ -10,10 +10,17 @@ cd "$(dirname "$at")"
 home="$(pwd)"
 cd "${dir}"
 
+monki="${home}/monki/bin/monki"
+lumen="${home}/lumen/bin/lumen"
+
 export laarc_home="$home"
+
+if [ -t 0 ]; then export laarc_stdin_tty="1"; fi
+if [ -t 1 ]; then export laarc_stdout_tty="1"; fi
 
 if [ -z "$HOST" ]; then HOST="${host}"; fi
 if [ -z "$LUMEN_HOST" ]; then LUMEN_HOST="${HOST}"; fi
+if [ -z "$LUMEN_HOST" ]; then LUMEN_HOST=luvit; fi
 
 case "$LUMEN_HOST" in
     luvit)
@@ -24,13 +31,35 @@ case "$LUMEN_HOST" in
           cd "${dir}"
         fi
 esac
+
 export LUMEN_HOST
+export LUA_PATH="${LUA_PATH};./?.lua;${home}/lumen/bin/?.lua"
+export NODE_PATH="${NODE_PATH}:.:${home}/lumen/bin"
 
+if [ "${home}/ac-reader.l" -nt "${home}/ac-reader.lua" ]; then
+  "${lumen}" -c "${home}/ac-reader.l" -o "${home}/ac-reader.lua" -t lua
+fi
 
-export LUA_PATH="${LUA_PATH};./?.lua"
-export NODE_PATH="${NODE_PATH}:."
+if [ "${home}/ac-reader.l" -nt "${home}/ac-reader.js" ]; then
+  "${lumen}" -c "${home}/ac-reader.l" -o "${home}/ac-reader.js" -t js
+fi
 
-"${home}/lumen/bin/lumen" -e "(do (define home ((get (require 'system) 'get-environment-variable) 'laarc_home)) (load (cat home '/laarc.l)) (ac-load (cat home '/test.la)) (test))"
-exec "${home}/lumen/bin/lumen" 
+if [ "${home}/laarc.l" -nt "${home}/laarc.lua" ]; then
+  ( "${lumen}" -c "${home}/lumen/runtime.l" -t lua && 
+    "${lumen}" -c "${home}/lumen/macros.l" -t lua &&
+    "${lumen}" -c "${home}/laarc.l" -t lua
+  ) | sponge > "${home}/laarc.lua"
+fi
 
+if [ "${home}/laarc.l" -nt "${home}/laarc.js" ]; then
+  ( "${lumen}" -c "${home}/lumen/runtime.l" -t js && 
+    "${lumen}" -c "${home}/lumen/macros.l" -t js &&
+    "${lumen}" -c "${home}/laarc.l" -t js
+  ) | sponge > "${home}/laarc.js"
+fi
+
+case "$LUMEN_HOST" in
+  node*) exec $LUMEN_HOST "${home}/laarc.js" "$@" ;;
+      *) exec $LUMEN_HOST "${home}/laarc.lua" "$@" ;;
+esac
 

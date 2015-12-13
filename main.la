@@ -1,0 +1,7 @@
+
+(mac lib (x) `(def ,x (require ',x)))
+(mac use (x) `(var ,x (require ',x)))
+
+(use process)
+(pp _G)
+

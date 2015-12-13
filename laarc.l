@@ -1,4 +1,10 @@
 
+(define-global env (get (require 'system) 'get-environment-variable))
+
+(define-global home        (env 'laarc_home))
+(define-global stdin-tty?  (env 'laarc_stdin_tty))
+(define-global stdout-tty? (env 'laarc_stdout_tty))
+
 ;; Base.
 
 (define-macro during-compile-and-run l
@@ -19,7 +25,7 @@
   (eval `(do ,@l))
   nil)
 
-(during-compile
+(during-compile-and-run
 
   (define-global compiler (require 'compiler))
 
@@ -166,16 +172,17 @@
 (define-macro sym l `(define-symbol ,@l)) 
 
 (sym t true)
+(sym len lumen-len)
 
 (mac is l
-  (case (lumen-len l)
+  (case (len l)
     0 `true
     1 `(is? ,@l)
     2 `(lumen-eq ,@l)
     `(and ,@(map3 (fn (x y) `(is ,x ,y))
                   l))))
 
-(during-compile
+(during-compile-and-run
   (define-global is-var? (x)
     (step frame environment
       (let u (get frame x)
@@ -199,13 +206,13 @@
     (let s ((get reader 'stream) x more)
       ((get reader 'read-all) s))))
 
-(def readstr (x more)
-  (let reader (require 'ac-reader)
-    (let s ((get reader 'stream) x more)
+(def readstr (x more :reader)
+  (let r (if (is reader true) (require 'ac-reader) r)
+    (let s ((get r 'stream) x more)
       (map (fn (x) (if (atom? x) x
                        (is (hd x) '%list) (tl x)
                      x))
-           ((get reader 'read-all) s)))))
+           ((get r 'read-all) s)))))
 
 (def %run    (get (require 'compiler) 'run))
 (def %expand (get (require 'compiler) 'expand))
@@ -213,14 +220,19 @@
 (def macex (expr)
   (%expand expr))
 
+(def ac-compile (expr)
+  (compile (macex expr)))
+
+(def ac-compile-str (s)
+  (compile (macex `(do ,@(readstr s)))))
+
 (def ac-compile-file (file)
-  (compile (macex `(do ,@(readstr (filechars file))))))
+  (ac-compile-str (filechars file)))
 
 (def ac-load (file)
   (let x (ac-compile-file file)
     (print x)
     (%run x)))
-
 
 ;; Helpers.
 
@@ -229,4 +241,60 @@
                                    (lumen-str ((fn () ,x))))))
               l)
        nil))
+
+(def endswith (s ending)
+  (let i (- (len s) (len ending))
+    (is i (search s ending i))))
+
+(def startswith (s prefix)
+  (is (search s prefix) 0))
+
+;; Main.
+
+(define-global pp (x)
+  (print (str x)))
+
+(target lua:
+  (let ((ok req) (guard (require 'require)))
+    (when ok
+      (define-global require (req "/"))
+      (eval '(define-global require ((require 'require) "/")))
+      (define-global ppr (get (require 'pretty-print) 'prettyPrint))
+      (define-global pp (x)
+        (if (string? x) (print x)
+          (ppr x)))
+      ((get compiler 'run) """
+ffi = require('ffi')
+ffi.cdef[[int fcntl(int fildes, int cmd, ...);]]
+ffi.cdef[[static const int F_GETFL= 3;/* get file status flags */]]
+ffi.cdef[[static const int F_SETFL= 4;/* set file status flags */]]
+ffi.cdef[[static const int O_NONBLOCK	= 0x0004;		/* no delay */]]
+local flags = ffi.C.fcntl(0, ffi.C.F_GETFL, 0)
+bit = require("bit")
+flags = bit.bxor(flags, ffi.C.O_NONBLOCK)
+ffi.C.fcntl(0, ffi.C.F_SETFL, flags)
+"""))))
+
+(let args (get (require 'system) 'argv)
+  (for i (len args)
+    (var arg (at args i))
+    (if (endswith arg '.la) (%run (ac-compile-file arg))
+        (is arg "test")
+        (do (%run (ac-compile-file (cat home "/test.la")))
+            (test))
+        (is arg "-e")
+        (do (inc i)
+            (%run (ac-compile-str
+                    (cat "(set %result "
+                         (with s ""
+                           (step x (cut args i)
+                             (cat! s " " x)))
+                      ")")))
+            (when (is? %result)
+              (pp %result)))
+      (%run arg))))
+
+
+
+
 
