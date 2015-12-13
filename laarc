@@ -18,6 +18,11 @@ if [ -z "$LUMEN_HOST" ]; then LUMEN_HOST="${HOST}"; fi
 case "$LUMEN_HOST" in
     luvit)
         LUMEN_HOST="${home}/luvit/luvit"
+        if [ -z "$(which "$LUMEN_HOST")" ]; then
+          cd "${home}/luvit"
+          make
+          cd "${dir}"
+        fi
 esac
 export LUMEN_HOST
 
