@@ -962,7 +962,7 @@ env = require("system")["get-environment-variable"]
 home = env("laarc_home")
 stdin_tty63 = env("laarc_stdin_tty")
 stdout_tty63 = env("laarc_stdout_tty")
-setenv("during-compile-and-run", {_stash = true, macro = function (...)
+setenv("eval-now", {_stash = true, macro = function (...)
   local l = unstash({...})
   eval(join({"do"}, l))
   return(join({"do"}, l))
@@ -971,7 +971,7 @@ if last(environment).laarc then
   drop(environment)
 end
 add(environment, {laarc = true})
-setenv("during-compile-and-run", {_stash = true, macro = function (...)
+setenv("eval-now", {_stash = true, macro = function (...)
   local l = unstash({...})
   eval(join({"do"}, l))
   return(join({"do"}, l))
@@ -1116,18 +1116,19 @@ function parse_args(xs, inits)
   else
     local l = {}
     local rest63 = nil
-    local _o5 = xs
-    local _c3 = 0
+    local kwargs = {}
+    local _o6 = xs
+    local _c5 = 0
     local k = nil
-    for k in next, _o5 do
-      if _c3 > 0 then
-        _c3 = _c3 - 1
+    for k in next, _o6 do
+      if _c5 > 0 then
+        _c5 = _c5 - 1
       else
-        local v = _o5[k]
+        local v = _o6[k]
         if v == _37kv then
-          _c3 = 2
-          v = _o5[k + 2]
-          k = _o5[k + 1]
+          _c5 = 2
+          v = _o6[k + 2]
+          k = _o6[k + 1]
         end
         if v == _37nil then
           v = nil
@@ -1151,7 +1152,7 @@ function parse_args(xs, inits)
             if atom63(k) then
               add(inits, {"if", {"nil?", k}, {"set", k, v}})
               if rest63 then
-                l[k] = true
+                add(kwargs, k)
               else
                 add(l, k)
               end
@@ -1162,36 +1163,91 @@ function parse_args(xs, inits)
         end
       end
     end
+    if rest63 == true then
+      error(". in an arg list must be followed by an atom")
+    else
+      local _x178 = kwargs
+      local _n10 = _35(_x178)
+      local _c6 = 0
+      local _i10 = 0
+      while _i10 < _n10 do
+        if _i10 >= _c6 then
+          local _u1 = _x178[_i10 + 1]
+          if _u1 == _37nil then
+            _u1 = nil
+          end
+          if _u1 == _37kv then
+            _c6 = _i10 + 3
+          else
+            local k = _u1
+            l[k] = true
+            add(inits, {"wipe", {"get", rest63, {"quote", k}}})
+          end
+        end
+        _i10 = _i10 + 1
+      end
+    end
+    return(l)
+  end
+end
+function parse_body(xs)
+  if atom63(xs) then
+    return(xs)
+  else
+    local l = {}
+    local _o7 = xs
+    local _c7 = 0
+    local k = nil
+    for k in next, _o7 do
+      if _c7 > 0 then
+        _c7 = _c7 - 1
+      else
+        local v = _o7[k]
+        if v == _37kv then
+          _c7 = 2
+          v = _o7[k + 2]
+          k = _o7[k + 1]
+        end
+        if v == _37nil then
+          v = nil
+        end
+        if number63(k) then
+          add(l, parse_body(v))
+        else
+          l[k] = parse_body(v)
+        end
+      end
+    end
     return(l)
   end
 end
 setenv("mac", {_stash = true, macro = function (name, args, ...)
-  local _r23 = unstash({...})
-  local _id9 = _r23
+  local _r25 = unstash({...})
+  local _id9 = _r25
   local body = cut(_id9, 0)
   local inits = {}
-  return(join({"define-macro", name, parse_args(args, inits)}, inits, body))
+  return(join({"define-macro", name, parse_args(args, inits)}, inits, parse_body(body)))
 end})
 setenv("def", {_stash = true, macro = function (name, args, ...)
-  local _r25 = unstash({...})
-  local _id11 = _r25
+  local _r27 = unstash({...})
+  local _id11 = _r27
   local body = cut(_id11, 0)
   if none63(body) then
     return({"define-global", name, args})
   else
     local inits = {}
-    return(join({"define-global", name, parse_args(args, inits)}, inits, body))
+    return(join({"define-global", name, parse_args(args, inits)}, inits, parse_body(body)))
   end
 end})
 setenv("var", {_stash = true, macro = function (name, args, ...)
-  local _r27 = unstash({...})
-  local _id13 = _r27
+  local _r29 = unstash({...})
+  local _id13 = _r29
   local body = cut(_id13, 0)
   if none63(body) then
     return({"define", name, args})
   else
     local inits = {}
-    return(join({"define", name, parse_args(args, inits)}, inits, body))
+    return(join({"define", name, parse_args(args, inits)}, inits, parse_body(body)))
   end
 end})
 setenv("sym", {_stash = true, macro = function (...)
@@ -1219,47 +1275,47 @@ setenv("is", {_stash = true, macro = function (...)
   end
 end})
 function is_var63(x)
-  local _x205 = environment
-  local _n9 = _35(_x205)
-  local _c5 = 0
-  local _i9 = 0
-  while _i9 < _n9 do
-    if _i9 >= _c5 then
-      local _u1 = _x205[_i9 + 1]
-      if _u1 == _37nil then
-        _u1 = nil
+  local _x213 = environment
+  local _n13 = _35(_x213)
+  local _c9 = 0
+  local _i13 = 0
+  while _i13 < _n13 do
+    if _i13 >= _c9 then
+      local _u3 = _x213[_i13 + 1]
+      if _u3 == _37nil then
+        _u3 = nil
       end
-      if _u1 == _37kv then
-        _c5 = _i9 + 3
+      if _u3 == _37kv then
+        _c9 = _i13 + 3
       else
-        local frame = _u1
+        local frame = _u3
         local u = frame[x]
         if is63(u) and is63(u.variable) then
           return(true)
         end
       end
     end
-    _i9 = _i9 + 1
+    _i13 = _i13 + 1
   end
 end
 setenv("=", {_stash = true, macro = function (...)
   local l = unstash({...})
   local e = {"do"}
   local final = nil
-  local _x213 = pair(l)
-  local _n11 = _35(_x213)
-  local _c7 = 0
-  local _i11 = 0
-  while _i11 < _n11 do
-    if _i11 >= _c7 then
-      local _u3 = _x213[_i11 + 1]
-      if _u3 == _37nil then
-        _u3 = nil
+  local _x221 = pair(l)
+  local _n15 = _35(_x221)
+  local _c11 = 0
+  local _i15 = 0
+  while _i15 < _n15 do
+    if _i15 >= _c11 then
+      local _u5 = _x221[_i15 + 1]
+      if _u5 == _37nil then
+        _u5 = nil
       end
-      if _u3 == _37kv then
-        _c7 = _i11 + 3
+      if _u5 == _37kv then
+        _c11 = _i15 + 3
       else
-        local _id15 = _u3
+        local _id15 = _u5
         local x = _id15[1]
         local y = _id15[2]
         final = x
@@ -1275,7 +1331,7 @@ setenv("=", {_stash = true, macro = function (...)
         add(e, {"lumen-assign", x, y})
       end
     end
-    _i11 = _i11 + 1
+    _i15 = _i15 + 1
   end
   add(e, final)
   return(e)
@@ -1325,15 +1381,30 @@ function ac_compile_file(file)
   return(ac_compile_str(filechars(file)))
 end
 function ac_load(file)
-  local x = ac_compile_file(file)
-  print(x)
-  return(_37run(x))
+  local code = ac_compile_file(file)
+  if env("VERBOSE") then
+    print("\n> (ac-load " .. file .. ")")
+    print(code)
+  end
+  local parts = split(file, ".")
+  local name = hd(parts)
+  local ext = last(parts)
+  ext = "la"
+  if not ext then
+    error("todo: non-.la files")
+  end
+  if not two63(parts) then
+    error("todo: filepaths containing multiple dots")
+  end
+  local filename = name .. "." .. "lua"
+  require("system")["write-file"](filename, code)
+  return(require(last(split(name, "/"))))
 end
 setenv("prdo", {_stash = true, macro = function (...)
   local l = unstash({...})
   return(join({"do"}, map(function (x)
     return({"print", {"cat", "\"> \"", {"lumen-str", {"quote", x}}, "\"\\n\"", {"lumen-str", {{"fn", join(), x}}}}})
-  end, l), {"nil"}))
+  end, l)))
 end})
 function endswith(s, ending)
   local i = _35(s) - _35(ending)
@@ -1345,19 +1416,19 @@ end
 function pp(x)
   return(print(str(x)))
 end
-local _x237 = nil
+local _x243 = nil
 local _msg = nil
 local _trace = nil
 local _e8
 if xpcall(function ()
-  _x237 = require("require")
-  return(_x237)
+  _x243 = require("require")
+  return(_x243)
 end, function (m)
   _msg = clip(m, search(m, ": ") + 2)
   _trace = debug.traceback()
   return(_trace)
 end) then
-  _e8 = {true, _x237}
+  _e8 = {true, _x243}
 else
   _e8 = {false, _msg, _trace}
 end
@@ -1382,33 +1453,33 @@ local i = 0
 while i < _35(args) do
   local arg = args[i + 1]
   if endswith(arg, ".la") then
-    _37run(ac_compile_file(arg))
+    ac_load(arg)
   else
     if arg == "test" then
-      _37run(ac_compile_file(home .. "/test.la"))
+      ac_load(home .. "/test.la")
       test()
     else
       if arg == "-e" then
         i = i + 1
         local s = ""
-        local _x244 = cut(args, i)
-        local _n12 = _35(_x244)
-        local _c8 = 0
-        local _i12 = 0
-        while _i12 < _n12 do
-          if _i12 >= _c8 then
-            local _u4 = _x244[_i12 + 1]
-            if _u4 == _37nil then
-              _u4 = nil
+        local _x250 = cut(args, i)
+        local _n16 = _35(_x250)
+        local _c12 = 0
+        local _i16 = 0
+        while _i16 < _n16 do
+          if _i16 >= _c12 then
+            local _u6 = _x250[_i16 + 1]
+            if _u6 == _37nil then
+              _u6 = nil
             end
-            if _u4 == _37kv then
-              _c8 = _i12 + 3
+            if _u6 == _37kv then
+              _c12 = _i16 + 3
             else
-              local x = _u4
+              local x = _u6
               s = s .. " " .. x
             end
           end
-          _i12 = _i12 + 1
+          _i16 = _i16 + 1
         end
         _37run(ac_compile_str("(set %result " .. s .. ")"))
         if is63(_37result) then

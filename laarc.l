@@ -7,17 +7,17 @@
 
 ;; Base.
 
-(define-macro during-compile-and-run l
+(define-macro eval-now l
   (eval `(do ,@l))
   `(do ,@l))
 
-(during-compile-and-run
+(eval-now
 
   (when (get (last environment) 'laarc)
     (drop environment))
   (add environment (obj :laarc)))
 
-(define-macro during-compile-and-run l
+(define-macro eval-now l
   (eval `(do ,@l))
   `(do ,@l))
 
@@ -25,7 +25,7 @@
   (eval `(do ,@l))
   nil)
 
-(during-compile-and-run
+(eval-now
 
   (define-global compiler (require 'compiler))
 
@@ -53,7 +53,8 @@
     lua: `(is? ,x)
     js:  `(not (= (typeof ,x) "undefined"))))
 
-(during-compile-and-run
+(eval-now
+
   (define-global %kv '(%kv))
   (define-global %nil '(%nil))
   (define-macro %nil ()
@@ -120,29 +121,43 @@
           `(let ,x (%array ,@l) ,@forms ,x)
         `(%array ,@l)))))
 
-(during-compile-and-run
+(eval-now
 
   (define-global parse-args (xs inits)
     (if (atom? xs) xs
       (with l ()
-        (let rest? nil
+        (let (rest? nil
+              kwargs ())
           (each (k v) xs
             (when (number? k)
               (set k v)
               (set v nil))
             (if (nil? v)
-                  (if (= rest? true)
-                    (do (set (get l 'rest) (parse-args k inits))
-                        (set rest? k))
-                    (add l (parse-args k inits)))
+                (if (= rest? true)
+                  (do (set (get l 'rest) (parse-args k inits))
+                      (set rest? k))
+                  (add l (parse-args k inits)))
                 (= k 'rest)
                   (do (set (get l 'rest) true)
                       (set rest? true))
                 (atom? k)
                  (do (add inits `(if (nil? ,k) (set ,k ,v)))
-                     (if rest? (set (get l k) true)
-                       (add l k)))
-                (error "todo")))))))
+                     (if rest?
+                         (add kwargs k)
+                         (add l k)))
+              (error "todo")))
+          (if (= rest? true) (error ". in an arg list must be followed by an atom")
+            (step k kwargs
+              (set (get l k) true)
+              (add inits `(wipe (get ,rest? ',k))) ))))))
+
+  (define-global parse-body (xs)
+    (if (atom? xs) xs
+      (with l ()
+        (each (k v) xs
+          (if (number? k)
+            (add l (parse-body v))
+            (set (get l k) (parse-body v)))))))
 )
 
 ;; Arc.
@@ -151,7 +166,7 @@
   (let inits ()
     `(define-macro ,name ,(parse-args args inits)
        ,@inits
-       ,@body)))
+       ,@(parse-body body))))
 
 (define-macro def (name args rest: body)
   (if (none? body)
@@ -159,7 +174,7 @@
     (let inits ()
       `(define-global ,name ,(parse-args args inits)
          ,@inits
-         ,@body))))
+         ,@(parse-body body)))))
 
 (define-macro var (name args rest: body)
   (if (none? body)
@@ -167,7 +182,7 @@
     (let inits ()
       `(define ,name ,(parse-args args inits)
          ,@inits
-         ,@body))))
+         ,@(parse-body body)))))
 
 (define-macro sym l `(define-symbol ,@l)) 
 
@@ -182,7 +197,8 @@
     `(and ,@(map3 (fn (x y) `(is ,x ,y))
                   l))))
 
-(during-compile-and-run
+(eval-now
+
   (define-global is-var? (x)
     (step frame environment
       (let u (get frame x)
@@ -229,18 +245,30 @@
 (def ac-compile-file (file)
   (ac-compile-str (filechars file)))
 
+; todo: multiple ac-load's of the same file should re-eval the file.
 (def ac-load (file)
-  (let x (ac-compile-file file)
-    (print x)
-    (%run x)))
+  (let code (ac-compile-file file)
+    (when (env "VERBOSE")
+      (print (cat "\n> (ac-load " file ")"))
+      (print code))
+    ; (%run code)))
+    (let (parts (split file ".")
+          name (hd parts)
+          ext (last parts))
+      (unless (= ext 'la) (error "todo: non-.la files"))
+      (unless (two? parts) (error "todo: filepaths containing multiple dots"))
+      (let filename (cat name "." (language))
+        ((get (require 'system) 'write-file) filename code)
+        (require (last (split name "/")))))))
+
 
 ;; Helpers.
 
 (mac prdo l
   `(do ,@(map (fn (x) `(print (cat "> " (lumen-str ',x) "\n"
                                    (lumen-str ((fn () ,x))))))
-              l)
-       nil))
+              l)))
+       ;nil))
 
 (def endswith (s ending)
   (let i (- (len s) (len ending))
@@ -278,20 +306,21 @@ ffi.C.fcntl(0, ffi.C.F_SETFL, flags)
 (let args (get (require 'system) 'argv)
   (for i (len args)
     (var arg (at args i))
-    (if (endswith arg '.la) (%run (ac-compile-file arg))
+    (if (endswith arg '.la)
+         (ac-load arg)
         (is arg "test")
-        (do (%run (ac-compile-file (cat home "/test.la")))
-            (test))
+         (do (ac-load (cat home "/test.la"))
+             (test))
         (is arg "-e")
-        (do (inc i)
-            (%run (ac-compile-str
-                    (cat "(set %result "
-                         (with s ""
-                           (step x (cut args i)
-                             (cat! s " " x)))
-                      ")")))
-            (when (is? %result)
-              (pp %result)))
+         (do (inc i)
+             (%run (ac-compile-str
+                     (cat "(set %result "
+                          (with s ""
+                            (step x (cut args i)
+                              (cat! s " " x)))
+                       ")")))
+             (when (is? %result)
+               (pp %result)))
       (%run arg))))
 
 
